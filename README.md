@@ -72,7 +72,8 @@ Registration.Application/
     RegisterUser/      RegisterUserCommand, RegisterUserCommandValidator, RegisterUserCommandHandler
     ConfirmEmail/      ConfirmEmailCommand, ConfirmEmailCommandValidator, ConfirmEmailCommandHandler
     GetRegistration/   GetRegistrationQuery, GetRegistrationQueryHandler, Models/RegistrationStatus
-  Saga/                RegistrationStateMachine, RegistrationOptions
+  Saga/                RegistrationStateMachine
+  Options/             RegistrationOptions
   Consumers/           UserActivatedConsumer, RegistrationDiscardedConsumer
   Behaviors/           ValidationBehavior
   Abstractions/        IUserRepository, IRegistrationReader
@@ -85,7 +86,9 @@ Registration.Api/
 
 Convención de nombres: `XCommand` / `XCommandHandler` / `XCommandValidator` y `XQuery` / `XQueryHandler`. Cada carpeta de `Features` tiene todo lo que necesita leer quien toca esa operación; el endpoint vive en la API con el mismo nombre de carpeta porque es lo único que sabe de HTTP.
 
-Convención de carpetas: los enumerados van en `Enums/` y los modelos (entidades, records de datos, opciones) en `Models/`, con el namespace igual a la ruta. Así en `Registration.Domain` (`Enums/UserStatus`, `Models/User`, `Models/RegistrationState`), en `Registration.Messaging` (`Enums/MessagingTransport`, `Models/MessagingOptions`, `Models/RabbitMqOptions`), en el worker (`Models/SentEmail`) y dentro de cada feature que devuelve o recibe un DTO (`GetRegistration/Models/RegistrationStatus`, `ConfirmEmail/Models/ConfirmEmailRequest`).
+Convención de carpetas: los enumerados van en `Enums/`, las clases de opciones de configuración en `Options/` y los modelos (entidades, records de datos, DTOs) en `Models/`, con el namespace igual a la ruta. Así en `Registration.Domain` (`Enums/UserStatus`, `Models/User`, `Models/RegistrationState`), en `Registration.Messaging` (`Enums/MessagingTransport`, `Options/MessagingOptions`, `Options/RabbitMqOptions`, `Options/AzureServiceBusOptions`), en `Registration.Application` (`Options/RegistrationOptions`), en el worker (`Models/SentEmail`) y dentro de cada feature que devuelve o recibe un DTO (`GetRegistration/Models/RegistrationStatus`, `ConfirmEmail/Models/ConfirmEmailRequest`).
+
+Sin comentarios en el código: los nombres dicen qué hace cada pieza y el porqué de las decisiones y las trampas está en este README y en `CLAUDE.md`.
 
 ## La saga paso a paso
 

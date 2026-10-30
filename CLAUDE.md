@@ -6,14 +6,14 @@ Saga de registro de usuario con MassTransit 8, dos servicios sobre SQL Server co
 - `src/Registration.Messages` (contratos del bus), `Registration.Messaging` (configuración compartida del transporte: `AddMessaging`), `Registration.Domain`, `Registration.Application`, `Registration.Infrastructure`, `Registration.Api` (puerto 5100) y `Notifications.Worker` (puerto 5200). Tests en `tests/`, espejo por capa. Solución `MassTransit.Saga.Demo.slnx`, Central Package Management en `Directory.Packages.props`.
 - Capas más vertical slice: cada operación es una carpeta en `Registration.Application/Features/<Nombre>/` con comando o consulta, handler y validador, y una carpeta homónima en `Registration.Api/Features/<Nombre>/` con solo el endpoint.
 - Nombres: `XCommand` / `XCommandHandler` / `XCommandValidator`, `XQuery` / `XQueryHandler`, `XEndpoint`. Eventos en pasado (`UserRegistered`), comandos en imperativo (`SendWelcomeEmail`). Un tipo por fichero.
-- Carpetas: enumerados en `Enums/`, modelos (entidades, records de datos, opciones, DTOs de una feature) en `Models/`, namespace igual a la ruta. Los `global using` de cada proyecto ya incluyen `Registration.Domain.Enums` y `Registration.Domain.Models` donde hacen falta.
+- Carpetas: enumerados en `Enums/`, clases de opciones de configuración en `Options/`, modelos (entidades, records de datos, DTOs de una feature) en `Models/`, namespace igual a la ruta. Los `global using` de cada proyecto ya incluyen `Registration.Domain.Enums` y `Registration.Domain.Models` donde hacen falta.
 
 ## Reglas de código
 - Handlers devuelven `Result` o `Result<T>` de Ardalis.Result; nunca excepciones para flujo de negocio. Los endpoints solo hacen `mediator.Send` y `result.ToMinimalApiResult()`.
 - Validación con FluentValidation en `ValidationBehavior`: devuelve `Result.Invalid`, no lanza. Todo `IRequest` debe cerrar sobre `Result` o `Result<T>`; si no, el behavior falla al construirse (busca `Invalid(List<ValidationError>)` por reflexión).
 - La saga (`RegistrationStateMachine`) solo publica mensajes. No inyectar repositorios en ella: los cambios en `Users` los hacen `UserActivatedConsumer` y `RegistrationDiscardedConsumer`, que deben seguir siendo idempotentes.
 - Lógica de dominio en `Registration.Domain` (`User.Register`, `User.Activate`, `RegistrationState.Start`, `RegistrationState.Accepts`). `Domain` solo referencia `MassTransit.Abstractions`.
-- Comentarios en inglés y solo para trampas o porqués. Documentación en español.
+- Sin comentarios en el código: el nombre de la clase y del método tienen que bastar; los porqués y las trampas van en `README.md` y aquí. Documentación en español.
 - CRLF en todo (`.gitattributes`); los PNG de `docs/images` son binarios.
 
 ## Trampas

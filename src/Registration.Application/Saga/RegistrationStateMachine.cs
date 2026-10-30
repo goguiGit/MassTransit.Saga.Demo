@@ -9,7 +9,6 @@ public sealed class RegistrationStateMachine : MassTransitStateMachine<Registrat
         InstanceState(x => x.CurrentState);
 
         Event(() => UserRegistered, x => x.CorrelateById(context => context.Message.UserId));
-        // A confirmation after the saga finished (expired or already active) has nothing to act on.
         Event(() => EmailConfirmed, x =>
         {
             x.CorrelateById(context => context.Message.UserId);

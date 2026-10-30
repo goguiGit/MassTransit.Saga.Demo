@@ -1,6 +1,6 @@
 using Registration.Messaging.Enums;
 
-namespace Registration.Messaging.Models;
+namespace Registration.Messaging.Options;
 
 public sealed class MessagingOptions
 {

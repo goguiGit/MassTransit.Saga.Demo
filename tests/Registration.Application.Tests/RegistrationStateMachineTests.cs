@@ -165,19 +165,14 @@ public sealed class RegistrationStateMachineTests
     {
         await harness.Bus.Publish(new UserRegistered(userId, "ana@example.com"));
         var saga = harness.GetSagaStateMachineHarness<RegistrationStateMachine, RegistrationState>();
-        // Publish happens inside the behavior, before the instance is saved: a confirmation sent right after the
-        // email would find no saga yet and be discarded. Wait for the saved state as a real user implicitly does.
         await saga.Exists(userId, x => x.AwaitingConfirmation);
-        // Published.Select blocks until the inactivity timeout, longer than the confirmation window; read the
-        // code from the stored instance instead.
         return saga.Sagas.Contains(userId).VerificationCode;
     }
 
     private static async Task<ServiceProvider> StartBusAsync()
     {
         var provider = new ServiceCollection()
-            .AddSingleton(Options.Create(new RegistrationOptions { ConfirmationWindow = ConfirmationWindow }))
-            // Published.Any gives up after the inactivity timeout (1.2 s by default); the expiry tests sit idle longer.
+            .AddSingleton(Microsoft.Extensions.Options.Options.Create(new RegistrationOptions { ConfirmationWindow = ConfirmationWindow }))
             .Configure<TestHarnessOptions>(options => options.TestInactivityTimeout = ConfirmationWindow + TimeSpan.FromSeconds(1))
             .AddMassTransitTestHarness(x => x.AddSagaStateMachine<RegistrationStateMachine, RegistrationState>())
             .BuildServiceProvider(validateScopes: true);

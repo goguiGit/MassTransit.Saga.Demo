@@ -37,7 +37,6 @@ public static class DependencyInjection
         return services;
     }
 
-    // Demo: create the tables on startup instead of shipping EF migrations.
     public static async Task EnsureRegistrationDatabaseAsync(this IHost host)
     {
         using var scope = host.Services.CreateScope();

@@ -1,4 +1,4 @@
-namespace Registration.Application.Saga;
+namespace Registration.Application.Options;
 
 public sealed class RegistrationOptions
 {

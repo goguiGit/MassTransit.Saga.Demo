@@ -4,8 +4,6 @@ using FluentValidation;
 
 namespace Registration.Application.Behaviors;
 
-// Validation failures come back as Result.Invalid, not as an exception: the endpoint maps them to 400 like
-// any other Result. TResponse is Result or Result<T>; both expose a static Invalid(List<ValidationError>).
 public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidator<TRequest>> validators)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull

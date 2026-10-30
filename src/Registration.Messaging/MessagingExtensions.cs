@@ -2,12 +2,10 @@ using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Registration.Messaging.Enums;
-using Registration.Messaging.Models;
+using Registration.Messaging.Options;
 
 namespace Registration.Messaging;
 
-// Shared by every service so they agree on transport, schema, role and scheduler; a mismatch means
-// two services that cannot see each other's queues.
 public static class MessagingExtensions
 {
     public static IServiceCollection AddMessaging(
@@ -39,7 +37,6 @@ public static class MessagingExtensions
                     });
                     break;
                 case MessagingTransport.RabbitMq:
-                    // Needs the rabbitmq_delayed_message_exchange plugin (present in the masstransit/rabbitmq image).
                     x.AddDelayedMessageScheduler();
                     x.UsingRabbitMq((context, cfg) =>
                     {
@@ -53,8 +50,6 @@ public static class MessagingExtensions
                     });
                     break;
                 case MessagingTransport.AzureServiceBus:
-                    // Standard or Premium namespace (Basic has no topics) and a connection string with Manage rights:
-                    // MassTransit creates the topics, queues and forwarding subscriptions on startup.
                     var connectionString = options.AzureServiceBus.ConnectionString;
                     if (string.IsNullOrWhiteSpace(connectionString))
                     {
@@ -84,9 +79,6 @@ public static class MessagingExtensions
             options.Schema = "transport";
             options.Role = "transport";
         });
-        // CreateDatabase is off on purpose: that step always runs CREATE LOGIN with Username/Password, which has no
-        // integrated-security path. Registration.Api creates the database with EF first; the schema step resolves
-        // the current Windows login with ORIGINAL_LOGIN() and grants it the transport role.
         services.AddSqlServerMigrationHostedService(options =>
         {
             options.CreateDatabase = false;

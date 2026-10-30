@@ -18,7 +18,6 @@ public sealed class ConfirmEmailCommandHandler(IUserRepository users, IPublishEn
             return Result.Conflict("The account is already active.");
         }
 
-        // Whether the code is right is the saga's call: it holds the code and the deadline.
         await publishEndpoint.Publish(new EmailConfirmed(request.UserId, request.Code), cancellationToken);
         return Result.Success();
     }
