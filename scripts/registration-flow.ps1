@@ -40,7 +40,8 @@ function Invoke-Api([string] $Method, [string] $Url, $Body) {
         $status = [int] $response.StatusCode
         $raw = $response.Content
     }
-    catch [System.Net.WebException], [Microsoft.PowerShell.Commands.HttpResponseException] {
+    catch {
+        # WebException on 5.1, HttpResponseException on 7; the latter type does not exist on 5.1, so no typed catch.
         $response = $_.Exception.Response
         if ($null -eq $response) { throw }
         $status = [int] $response.StatusCode
