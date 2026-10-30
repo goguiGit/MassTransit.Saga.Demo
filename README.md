@@ -13,6 +13,7 @@ Es un ejemplo pequeño a propósito, pero completo: API con comandos y consultas
 - [La API: comandos, consultas, validación y resultados](#la-api-comandos-consultas-validación-y-resultados)
 - [El worker de notificaciones](#el-worker-de-notificaciones)
 - [Cómo ejecutarlo](#cómo-ejecutarlo)
+- [El panel Angular](#el-panel-angular)
 - [Cómo depurarlo de verdad](#cómo-depurarlo-de-verdad)
 - [Tests](#tests)
 - [Ventajas e inconvenientes de la saga](#ventajas-e-inconvenientes-de-la-saga)
@@ -25,7 +26,7 @@ Alguien se registra con su correo. A partir de ahí pasan cosas en momentos dist
 
 1. **Al instante** se le envía un correo con un código de verificación de seis dígitos y el registro queda *pendiente de confirmar*.
 2. **Cuando la persona quiera** introduce el código. Si es el correcto, la cuenta pasa a *activa* y recibe el correo de bienvenida. Si se equivoca, puede volver a intentarlo.
-3. **Si pasa el plazo** (24 horas en producción, 2 minutos en esta demo) sin confirmar, el registro caduca y se descarta: el usuario desaparece como si nunca se hubiera registrado. Un código introducido después ya no hace nada.
+3. **Si pasa el plazo** (24 horas en producción, 5 minutos en esta demo, configurable) sin confirmar, el registro caduca y se descarta: el usuario desaparece como si nunca se hubiera registrado. Un código introducido después ya no hace nada.
 
 ![Estados del registro](docs/images/saga-estados.png)
 
@@ -61,6 +62,7 @@ flowchart LR
 | `Registration.Infrastructure` | Infraestructura | `RegistrationDbContext` (EF Core), repositorio de usuarios, lector de sagas, registro de la saga con repositorio EF y de los consumidores sobre `AddMessaging` | Application, Messaging, EF Core SQL Server, MassTransit.EntityFrameworkCore |
 | `Registration.Api` | Presentación | Un endpoint por *feature* que delega en MediatR y traduce el `Result` a HTTP | Application, Infrastructure |
 | `Notifications.Worker` | Otro servicio | `EmailSender` consume los comandos de correo y los apunta; `GET /emails` para leerlos | Messages, MassTransit |
+| `web/registration-ui` | Panel de pruebas (Angular) | Botones para cada escenario, estado del usuario y de la saga con cuenta atrás, buzón del worker, colas de RabbitMQ y línea de tiempo | La API, el worker y la consola de RabbitMQ, a través del proxy del `ng serve` |
 
 ### Capas y vertical slice a la vez
 
@@ -141,7 +143,7 @@ Qué hace cada pieza:
 - **`OnMissingInstance(Discard)`** en `EmailConfirmed`: una confirmación cuando la saga ya terminó (caducada o ya activa) se descarta en silencio en vez de ir a la cola de error.
 - **`SetCompletedWhenFinalized()`**: al llegar al estado `Final` la fila se borra. El resultado del proceso no está en la saga sino en el usuario (`Active`) o en su ausencia.
 
-El plazo está en configuración: `Registration:ConfirmationWindow` en `appsettings.json` de la API (`00:02:00` en la demo). Los tests lo bajan a 2 segundos.
+El plazo está en configuración: `Registration:ConfirmationWindow` en `appsettings.json` de la API (`00:05:00` en la demo; cámbialo ahí o con la variable `Registration__ConfirmationWindow`). Los tests lo bajan a 2 segundos.
 
 ## Mensajes
 
@@ -350,7 +352,34 @@ curl -s http://localhost:5100/registrations/789e0000-...
 # {"userStatus":"Active","sagaState":null,"activatedAt":"2026-10-30T11:49:11",...}
 ```
 
-Si en vez de confirmar esperas los 2 minutos de `ConfirmationWindow`, el worker no recibe nada más, `RegistrationDiscardedConsumer` borra al usuario y `GET /registrations/{id}` pasa a 404.
+Si en vez de confirmar esperas los 5 minutos de `ConfirmationWindow`, el worker no recibe nada más, `RegistrationDiscardedConsumer` borra al usuario y `GET /registrations/{id}` pasa a 404.
+
+## El panel Angular
+
+`web/registration-ui` es una aplicación Angular pequeña (un componente, un servicio) para **simular los escenarios sin curl** y ver el flujo mientras ocurre.
+
+```bash
+cd web/registration-ui
+npm install          # la primera vez
+npm start            # http://localhost:4200
+```
+
+El `ng serve` lleva un proxy (`proxy.conf.json`) que reenvía `/api` a la API (5100), `/worker` al worker (5200) y `/rabbit` a la consola de RabbitMQ (15672, con las credenciales `guest`), así no hace falta CORS en ningún servicio y la cadena de RabbitMQ no sale del proxy.
+
+Qué hay en pantalla:
+
+| Tarjeta | Qué hace |
+|---|---|
+| **Registro** | `Registrar` (201), `Email inválido` (400) y `Nuevo escenario`. El email se genera único para cada escenario. |
+| **Confirmación** | `Confirmar con el código del buzón` (lee el código que el worker apuntó), `Confirmar el código escrito`, `Código incorrecto` (200 y la saga sigue esperando), `Código mal formado` (400). Para caducar, registra y no confirmes. |
+| **Estado** | Fase en grande (pendiente, activa, descartada), estado del usuario y de la saga, y **cuenta atrás** hasta que venza el plazo (la API devuelve `expiresAt` mientras la saga vive). Se refresca cada 2 segundos. |
+| **Buzón del worker** | Lo que `Notifications.Worker` habría enviado. Vacío si el worker está apagado: el mensaje espera en la cola. |
+| **Colas en RabbitMQ** | `RegistrationState`, `EmailSender`, `UserActivated`, `RegistrationDiscarded` con mensajes listos, sin ack y consumidores, desde la API de administración. Una fila en naranja es un mensaje esperando. |
+| **Línea de tiempo** | Cada llamada, su código HTTP y lo que significa, los correos que llegan y los cambios de estado de la saga. |
+
+Escenario típico de "ver el flujo": arranca RabbitMQ y la API pero **no el worker**; registra; verás 1 mensaje listo en `EmailSender` y el buzón vacío; arranca el worker y verás el mensaje consumirse, el correo aparecer y el botón de confirmar activarse. Confirma, o deja correr la cuenta atrás y mira cómo la saga descarta el registro.
+
+El plazo de la demo es de **5 minutos** (`Registration:ConfirmationWindow` en `appsettings.json` de la API, o la variable `Registration__ConfirmationWindow`); el script `registration-flow.ps1 -Expire` asume el mismo valor con `-ConfirmationWindowSeconds`.
 
 ## Cómo depurarlo de verdad
 

@@ -11,7 +11,7 @@ Exit code 0 when every step matched the expected outcome, 1 otherwise.
 .EXAMPLE
 .\scripts\registration-flow.ps1
 .\scripts\registration-flow.ps1 -Email luis@example.com
-.\scripts\registration-flow.ps1 -Expire -ConfirmationWindowSeconds 120
+.\scripts\registration-flow.ps1 -Expire -ConfirmationWindowSeconds 300
 #>
 [CmdletBinding()]
 param(
@@ -19,7 +19,7 @@ param(
     [string] $Worker = 'http://localhost:5200',
     [string] $Email = "ana+$(Get-Date -Format 'HHmmss')@example.com",
     [switch] $Expire,
-    [int] $ConfirmationWindowSeconds = 120,
+    [int] $ConfirmationWindowSeconds = 300,
     [int] $SettleSeconds = 3
 )
 

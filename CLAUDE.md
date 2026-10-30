@@ -3,6 +3,7 @@
 Saga de registro de usuario con MassTransit 8, dos servicios sobre SQL Server como transporte. La explicación completa está en `README.md`; aquí solo decisiones, trampas y convenciones que no se deducen del código.
 
 ## Estructura
+- `web/registration-ui`: panel Angular 22 (standalone, signals, vitest) para simular escenarios; habla con la API, el worker y la consola de RabbitMQ a través del proxy de `ng serve` (`proxy.conf.json`), sin CORS. `npm start` en esa carpeta; `npx ng test --watch=false` para sus tests. No es un proyecto de la solución .NET.
 - `src/Registration.Messages` (contratos del bus), `Registration.Messaging` (configuración compartida del transporte: `AddMessaging`), `Registration.Domain`, `Registration.Application`, `Registration.Infrastructure`, `Registration.Api` (puerto 5100) y `Notifications.Worker` (puerto 5200). Tests en `tests/`, espejo por capa. Solución `MassTransit.Saga.Demo.slnx`, Central Package Management en `Directory.Packages.props`.
 - Capas más vertical slice: cada operación es una carpeta en `Registration.Application/Features/<Nombre>/` con comando o consulta, handler y validador, y una carpeta homónima en `Registration.Api/Features/<Nombre>/` con solo el endpoint.
 - Nombres: `XCommand` / `XCommandHandler` / `XCommandValidator`, `XQuery` / `XQueryHandler`, `XEndpoint`. Eventos en pasado (`UserRegistered`), comandos en imperativo (`SendWelcomeEmail`). Un tipo por fichero.
@@ -29,7 +30,7 @@ Saga de registro de usuario con MassTransit 8, dos servicios sobre SQL Server co
 
 ## Verificar
 - `dotnet build MassTransit.Saga.Demo.slnx` y `dotnet test MassTransit.Saga.Demo.slnx` (30 tests, ~25 s, sin SQL Server).
-- Flujo real: arrancar `Registration.Api`, luego `Notifications.Worker`, y seguir `src/Registration.Api/Registration.Api.http`. El plazo de la demo es `Registration:ConfirmationWindow = 00:02:00`. Para probar RabbitMQ, `Messaging__Transport=RabbitMq` en el entorno de los dos procesos con el contenedor arrancado (`podman machine start` antes si hace falta).
+- Flujo real: arrancar `Registration.Api`, luego `Notifications.Worker`, y seguir `src/Registration.Api/Registration.Api.http`. El plazo de la demo es `Registration:ConfirmationWindow = 00:05:00`; `GetRegistration` devuelve `ExpiresAt` calculado con ese valor para la cuenta atrás del panel. Para probar RabbitMQ, `Messaging__Transport=RabbitMq` en el entorno de los dos procesos con el contenedor arrancado (`podman machine start` antes si hace falta).
 - Secretos: la única credencial es la cadena de Azure Service Bus, y va en user-secrets (`UserSecretsId` compartido `Saga.Secrets` en la API y en el worker), nunca en el repo. La cadena de SQL Server es integrada a `localhost` y no es secreto.
 
 ## Git

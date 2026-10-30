@@ -1,9 +1,10 @@
+using Microsoft.Extensions.Options;
 using Registration.Application.Abstractions;
 using Registration.Application.Features.GetRegistration.Models;
 
 namespace Registration.Application.Features.GetRegistration;
 
-public sealed class GetRegistrationQueryHandler(IUserRepository users, IRegistrationReader registrations)
+public sealed class GetRegistrationQueryHandler(IUserRepository users, IRegistrationReader registrations, IOptions<RegistrationOptions> options)
     : IRequestHandler<GetRegistrationQuery, Result<RegistrationStatus>>
 {
     public async Task<Result<RegistrationStatus>> Handle(GetRegistrationQuery request, CancellationToken cancellationToken)
@@ -15,6 +16,7 @@ public sealed class GetRegistrationQueryHandler(IUserRepository users, IRegistra
         }
 
         var saga = await registrations.FindAsync(request.UserId, cancellationToken);
-        return new RegistrationStatus(user.Id, user.Email, user.Status, saga?.CurrentState, user.CreatedAt, user.ActivatedAt);
+        var expiresAt = saga is null ? (DateTime?)null : saga.RegisteredAt + options.Value.ConfirmationWindow;
+        return new RegistrationStatus(user.Id, user.Email, user.Status, saga?.CurrentState, user.CreatedAt, user.ActivatedAt, expiresAt);
     }
 }

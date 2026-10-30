@@ -16,6 +16,15 @@
     <File Path=".claude/commands/registration-flow.md" />
     <File Path="scripts/registration-flow.ps1" />
   </Folder>
+  <Folder Name="/web/">
+    <File Path="web/registration-ui/angular.json" />
+    <File Path="web/registration-ui/package.json" />
+    <File Path="web/registration-ui/proxy.conf.json" />
+    <File Path="web/registration-ui/src/app/app.ts" />
+    <File Path="web/registration-ui/src/app/app.html" />
+    <File Path="web/registration-ui/src/app/app.css" />
+    <File Path="web/registration-ui/src/app/registration-api.ts" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Registration.Messages/Registration.Messages.csproj" />
     <Project Path="src/Registration.Messaging/Registration.Messaging.csproj" />

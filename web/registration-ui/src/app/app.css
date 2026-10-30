@@ -1,0 +1,36 @@
+:host { display: block; font-family: system-ui, sans-serif; color: #1f2937; }
+main { max-width: 1200px; margin: 0 auto; padding: 16px; }
+header h1 { margin: 0 0 4px; }
+header p { margin: 0 0 16px; color: #6b7280; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; }
+.card h2 { margin: 0 0 12px; font-size: 1.05rem; }
+.wide { grid-column: 1 / -1; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; margin-bottom: 12px; }
+input { padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font: inherit; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+button { padding: 8px 12px; border: 0; border-radius: 6px; background: #2563eb; color: #fff; font: inherit; cursor: pointer; }
+button.secondary { background: #e5e7eb; color: #1f2937; }
+button:disabled { opacity: 0.45; cursor: default; }
+.hint { color: #6b7280; font-size: 0.85rem; }
+.status .phase { font-size: 1.2rem; font-weight: 600; margin: 0 0 8px; }
+.status.active { border-color: #16a34a; }
+.status.gone { border-color: #dc2626; }
+dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0; font-size: 0.9rem; }
+dt { color: #6b7280; }
+dd { margin: 0; word-break: break-all; }
+.countdown { font-weight: 700; color: #b45309; }
+.mail { list-style: none; padding: 0; margin: 0; font-size: 0.9rem; }
+.mail li { padding: 6px 0; border-top: 1px solid #f3f4f6; }
+.mail .body { color: #374151; }
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid #f3f4f6; }
+tr.pending td { background: #fff7ed; }
+.timeline { list-style: none; padding: 0; margin: 0; font-family: ui-monospace, monospace; font-size: 0.85rem; }
+.timeline li { padding: 4px 8px; border-left: 3px solid #d1d5db; margin-bottom: 2px; }
+.timeline li.action { border-color: #2563eb; }
+.timeline li.ok { border-color: #16a34a; }
+.timeline li.warn { border-color: #f59e0b; }
+.timeline li.error { border-color: #dc2626; }
+.time { color: #9ca3af; margin-right: 6px; }
+code { font-size: 0.85em; }

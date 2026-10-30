@@ -1,0 +1,105 @@
+<main>
+  <header>
+    <h1>Registro con saga</h1>
+    <p>Simula los escenarios de la saga de registro contra <code>Registration.Api</code> y <code>Notifications.Worker</code>.</p>
+  </header>
+
+  <section class="grid">
+    <article class="card">
+      <h2>1. Registro</h2>
+      <label>Email <input type="email" [value]="email()" (input)="updateEmail($event)" [disabled]="userId() !== null" /></label>
+      <div class="actions">
+        <button (click)="register()" [disabled]="userId() !== null">Registrar</button>
+        <button class="secondary" (click)="registerInvalidEmail()">Email inválido (400)</button>
+        <button class="secondary" (click)="reset()" [disabled]="userId() === null">Nuevo escenario</button>
+      </div>
+    </article>
+
+    <article class="card">
+      <h2>2. Confirmación</h2>
+      <label>Código <input type="text" maxlength="6" [value]="code()" (input)="updateCode($event)" [disabled]="userId() === null" /></label>
+      <div class="actions">
+        <button (click)="confirmWithMailboxCode()" [disabled]="userId() === null || mailboxCode() === null">Confirmar con el código del buzón</button>
+        <button (click)="confirmTyped()" [disabled]="userId() === null || code().length === 0">Confirmar el código escrito</button>
+      </div>
+      <div class="actions">
+        <button class="secondary" (click)="confirmWrongCode()" [disabled]="userId() === null">Código incorrecto (200, ignorado)</button>
+        <button class="secondary" (click)="confirmMalformedCode()" [disabled]="userId() === null">Código mal formado (400)</button>
+      </div>
+      <p class="hint">Para el escenario de caducidad, registra y no confirmes: el contador llega a cero y el registro desaparece.</p>
+    </article>
+
+    <article class="card status" [class.active]="status()?.userStatus === 'Active'" [class.gone]="lastStatusCode() === 404">
+      <h2>Estado</h2>
+      <p class="phase">{{ phase() }}</p>
+      @if (status(); as current) {
+        <dl>
+          <dt>userId</dt>
+          <dd><code>{{ current.userId }}</code></dd>
+          <dt>email</dt>
+          <dd>{{ current.email }}</dd>
+          <dt>usuario</dt>
+          <dd>{{ current.userStatus }}</dd>
+          <dt>saga</dt>
+          <dd>{{ current.sagaState ?? 'terminada (instancia borrada)' }}</dd>
+          <dt>creado</dt>
+          <dd>{{ current.createdAt | date: 'HH:mm:ss' }}</dd>
+          @if (current.activatedAt) {
+            <dt>activado</dt>
+            <dd>{{ current.activatedAt | date: 'HH:mm:ss' }}</dd>
+          }
+          @if (secondsToExpiry() !== null) {
+            <dt>caduca en</dt>
+            <dd class="countdown">{{ secondsToExpiry() }} s</dd>
+          }
+        </dl>
+      } @else if (userId()) {
+        <p><code>{{ userId() }}</code></p>
+      }
+    </article>
+
+    <article class="card">
+      <h2>Buzón del worker</h2>
+      @if (emails().length === 0) {
+        <p class="hint">Sin correos. Si el worker está apagado, el mensaje espera en la cola <code>EmailSender</code>.</p>
+      }
+      <ul class="mail">
+        @for (mail of emails().slice().reverse(); track mail.sentAt + mail.to) {
+          <li>
+            <span class="time">{{ mail.sentAt | date: 'HH:mm:ss' }}</span> <strong>{{ mail.subject }}</strong> → {{ mail.to }}<br />
+            <span class="body">{{ mail.body }}</span>
+          </li>
+        }
+      </ul>
+    </article>
+
+    <article class="card">
+      <h2>Colas en RabbitMQ</h2>
+      @if (queues().length === 0) {
+        <p class="hint">Sin datos: la consola de RabbitMQ (puerto 15672) no responde o el transporte no es RabbitMQ.</p>
+      } @else {
+        <table>
+          <thead>
+            <tr><th>Cola</th><th>Listos</th><th>Sin ack</th><th>Consumidores</th></tr>
+          </thead>
+          <tbody>
+            @for (queue of queues(); track queue.name) {
+              <tr [class.pending]="queue.ready > 0">
+                <td>{{ queue.name }}</td><td>{{ queue.ready }}</td><td>{{ queue.unacked }}</td><td>{{ queue.consumers }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </article>
+
+    <article class="card wide">
+      <h2>Línea de tiempo</h2>
+      <ol class="timeline">
+        @for (entry of log(); track entry.at.getTime() + entry.text) {
+          <li [class]="entry.kind"><span class="time">{{ entry.at | date: 'HH:mm:ss' }}</span> {{ entry.text }}</li>
+        }
+      </ol>
+    </article>
+  </section>
+</main>
