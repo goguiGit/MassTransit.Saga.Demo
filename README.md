@@ -1,6 +1,6 @@
 # MassTransit.Saga.Demo
 
-Registro de usuario con confirmación de email implementado como **saga de MassTransit**, repartido en dos servicios .NET que hablan entre sí por **SQL Server como transporte de mensajes**. Sin RabbitMQ, sin Azure Service Bus, sin Docker: con la instancia local de SQL Server basta para arrancarlo, depurarlo con dos procesos en paralelo y ver las colas y el estado de la saga en tablas.
+Registro de usuario con confirmación de email implementado como **saga de MassTransit**, repartido en dos servicios .NET que hablan entre sí por **SQL Server como transporte de mensajes**. Con la instancia local de SQL Server basta para arrancarlo, depurarlo con dos procesos en paralelo y ver las colas y el estado de la saga en tablas; y si tienes Podman o Docker, el mismo código corre sobre **RabbitMQ** cambiando una línea de configuración.
 
 Es un ejemplo pequeño a propósito, pero completo: API con comandos y consultas (MediatR, vertical slice), validación (FluentValidation), respuestas tipadas (Ardalis.Result), entidad de dominio persistida (EF Core), máquina de estados con plazo (MassTransit) y un segundo servicio que consume los comandos de correo.
 
@@ -9,7 +9,7 @@ Es un ejemplo pequeño a propósito, pero completo: API con comandos y consultas
 - [La saga paso a paso](#la-saga-paso-a-paso)
 - [Mensajes](#mensajes)
 - [Persistencia](#persistencia)
-- [SQL Server como transporte](#sql-server-como-transporte)
+- [El transporte: SQL Server o RabbitMQ](#el-transporte-sql-server-o-rabbitmq)
 - [La API: comandos, consultas, validación y resultados](#la-api-comandos-consultas-validación-y-resultados)
 - [El worker de notificaciones](#el-worker-de-notificaciones)
 - [Cómo ejecutarlo](#cómo-ejecutarlo)
@@ -44,7 +44,7 @@ flowchart LR
     C[Cliente HTTP] -->|POST /registrations| API[Registration.Api :5100]
     C -->|POST /registrations/id/confirm| API
     C -->|GET /registrations/id| API
-    API <-->|mensajes| T[(SQL Server<br/>esquema transport)]
+    API <-->|mensajes| T[(Transporte<br/>SQL Server esquema transport<br/>o RabbitMQ)]
     API <-->|Users, RegistrationSagas| DB[(SQL Server<br/>esquema dbo)]
     W[Notifications.Worker :5200] <-->|mensajes| T
     C -->|GET /emails| W
@@ -55,9 +55,10 @@ flowchart LR
 | Proyecto | Capa | Qué contiene | Depende de |
 |---|---|---|---|
 | `Registration.Messages` | Contratos entre servicios | Los siete `record` que viajan por el bus | nada |
+| `Registration.Messaging` | Infraestructura compartida | `AddMessaging`: elige el transporte (SQL Server o RabbitMQ) y su scheduler según `Messaging:Transport`, con el mismo esquema y rol para todos los servicios | MassTransit, MassTransit.SqlTransport.SqlServer, MassTransit.RabbitMQ |
 | `Registration.Domain` | Dominio | `User` (agregado), `UserStatus`, `RegistrationState` (instancia de la saga), `VerificationCode` | `MassTransit.Abstractions` (solo la interfaz `SagaStateMachineInstance`) |
 | `Registration.Application` | Aplicación | La máquina de estados, los consumidores que cambian usuarios, los *features* (comando o consulta + handler + validador), el `ValidationBehavior`, las abstracciones de persistencia | Domain, Messages, MassTransit, MediatR, FluentValidation, Ardalis.Result |
-| `Registration.Infrastructure` | Infraestructura | `RegistrationDbContext` (EF Core), repositorio de usuarios, lector de sagas, configuración de MassTransit con transporte SQL y repositorio EF de sagas | Application, EF Core SQL Server, MassTransit.EntityFrameworkCore, MassTransit.SqlTransport.SqlServer |
+| `Registration.Infrastructure` | Infraestructura | `RegistrationDbContext` (EF Core), repositorio de usuarios, lector de sagas, registro de la saga con repositorio EF y de los consumidores sobre `AddMessaging` | Application, Messaging, EF Core SQL Server, MassTransit.EntityFrameworkCore |
 | `Registration.Api` | Presentación | Un endpoint por *feature* que delega en MediatR y traduce el `Result` a HTTP | Application, Infrastructure |
 | `Notifications.Worker` | Otro servicio | `EmailSender` consume los comandos de correo y los apunta; `GET /emails` para leerlos | Messages, MassTransit |
 
@@ -166,9 +167,22 @@ El usuario existe desde el registro (por eso `POST /registrations` devuelve 201 
 
 Las tablas se crean con `EnsureCreated` al arrancar la API. Es una decisión de demo: **`EnsureCreated` no migra**. Si cambias el modelo, borra la base (`DROP DATABASE MassTransitSagaDemo`) y vuelve a arrancar. En un proyecto real irían migraciones de EF Core.
 
-## SQL Server como transporte
+## El transporte: SQL Server o RabbitMQ
 
-MassTransit 8 incluye un transporte que usa SQL Server (o PostgreSQL) como broker: las colas son tablas, la entrega usa `UPDATE ... OUTPUT` con bloqueos, y el *scheduler* de mensajes diferidos viene incluido. Lo configura `Registration.Infrastructure/DependencyInjection.cs`:
+El transporte se elige en `appsettings.json` (o con la variable de entorno `Messaging__Transport`), y lo configura `Registration.Messaging/MessagingExtensions.cs`, compartido por la API y el worker para que los dos usen exactamente lo mismo:
+
+```json
+"Messaging": {
+  "Transport": "Sql",
+  "RabbitMq": { "Host": "localhost", "VirtualHost": "/", "Username": "guest", "Password": "guest" }
+}
+```
+
+La saga, los consumidores, los handlers y los tests no saben cuál hay debajo.
+
+### SQL Server (`Transport: Sql`, por defecto)
+
+MassTransit 8 incluye un transporte que usa SQL Server (o PostgreSQL) como broker: las colas son tablas, la entrega usa `UPDATE ... OUTPUT` con bloqueos, y el *scheduler* de mensajes diferidos viene incluido. Es lo que hace `AddMessaging` cuando el transporte es `Sql`:
 
 ```csharp
 services.AddOptions<SqlTransportOptions>().Configure(options =>
@@ -207,7 +221,32 @@ Al arrancar aparecen en el esquema `transport` las tablas `Queue`, `Message`, `M
 
 **Trampa con autenticación integrada.** El migrador del transporte, en el paso de crear la base, ejecuta siempre `CREATE LOGIN {Username} WITH PASSWORD = '{Password}'`. Con autenticación de Windows no hay `Username`, y el SQL resultante (`CREATE LOGIN  WITH PASSWORD`) falla con *Incorrect syntax near the keyword 'WITH'*. En cambio el paso de esquema sí resuelve el usuario actual con `ORIGINAL_LOGIN()` y le concede el rol. Por eso la base la crea EF (`EnsureCreated`, antes de que arranquen los *hosted services*) y el migrador va con `CreateDatabase = false`. Consecuencia: el worker necesita que la base exista, así que la API arranca primero.
 
-¿Por qué SQL y no RabbitMQ? Porque es lo que hay en la máquina, y porque para depurar es una ventaja: `SELECT * FROM transport.Message` enseña los mensajes en vuelo con su cuerpo JSON, y `transport.MessageDelivery` los programados con su `EnqueueTime`. En producción el transporte SQL es una opción válida para volúmenes moderados; con mucho tráfico un broker dedicado rinde más.
+¿Por qué SQL por defecto? Porque no necesita nada más que la base que ya está, y porque para depurar es una ventaja: `SELECT * FROM transport.Message` enseña los mensajes en vuelo con su cuerpo JSON, y `transport.MessageDelivery` los programados con su `EnqueueTime`. En producción el transporte SQL es una opción válida para volúmenes moderados; con mucho tráfico un broker dedicado rinde más.
+
+### RabbitMQ (`Transport: RabbitMq`)
+
+Con Podman (o Docker) basta un contenedor. La imagen `masstransit/rabbitmq` es RabbitMQ con el plugin `rabbitmq_delayed_message_exchange` ya activado, que es lo que necesita `UseDelayedMessageScheduler` para el plazo de la saga; la imagen oficial no lo trae.
+
+```bash
+podman machine start                      # si la máquina está parada
+podman run -d --name rabbitmq -p 5672:5672 -p 15672:15672 docker.io/masstransit/rabbitmq:latest
+```
+
+Y arrancar los dos servicios con el transporte cambiado (o editar `Messaging:Transport` en los dos `appsettings.json`):
+
+```bash
+Messaging__Transport=RabbitMq dotnet run --project src/Registration.Api
+Messaging__Transport=RabbitMq dotnet run --project src/Notifications.Worker
+```
+
+En PowerShell: `$env:Messaging__Transport = 'RabbitMq'` antes de cada `dotnet run`. Con RabbitMQ la base de datos sigue haciendo falta para `Users` y `RegistrationSagas`, pero el worker ya no depende de ella y puede arrancar antes que la API.
+
+Qué cambia por dentro: `UsingRabbitMq` en vez de `UsingSqlServer`, `AddDelayedMessageScheduler` + `UseDelayedMessageScheduler` en vez del scheduler SQL, y no hay migrador. MassTransit crea en RabbitMQ un *exchange fanout* por tipo de mensaje (`Registration.Messages:UserRegistered`, ...), una cola por consumidor y saga (`RegistrationState`, `EmailSender`, `UserActivated`, `RegistrationDiscarded`) y un exchange `RegistrationState_delay` de tipo `x-delayed-message` donde espera el `RegistrationExpired`. Se ve todo en la consola de administración, http://localhost:15672 (usuario y contraseña `guest`, los de la imagen; son credenciales de un contenedor local, no un secreto).
+
+```bash
+podman exec rabbitmq rabbitmqctl list_queues name messages
+podman exec rabbitmq rabbitmqctl list_exchanges name type
+```
 
 ## La API: comandos, consultas, validación y resultados
 
@@ -245,7 +284,7 @@ Los handlers devuelven `Result` o `Result<T>` con un estado semántico (`Ok`, `C
 
 ## Cómo ejecutarlo
 
-Requisitos: .NET 10 SDK y una instancia local de SQL Server con autenticación integrada (`Server=localhost`). La cadena de conexión está en los dos `appsettings.json`; no hay credenciales en el repo. Si tu instancia es otra, cámbiala ahí o pásala por variable de entorno `ConnectionStrings__Registration`.
+Requisitos: .NET 10 SDK y una instancia local de SQL Server con autenticación integrada (`Server=localhost`). La cadena de conexión está en los dos `appsettings.json`; no hay credenciales en el repo. Si tu instancia es otra, cámbiala ahí o pásala por variable de entorno `ConnectionStrings__Registration`. RabbitMQ es opcional (ver [El transporte](#el-transporte-sql-server-o-rabbitmq)).
 
 ```bash
 dotnet build MassTransit.Saga.Demo.slnx
@@ -343,6 +382,11 @@ Problema: enseñar mensajería entre procesos sin inflar el ejemplo.
 Alternativa descartada: un tercer servicio orquestador con la saga, separado de la API.
 Qué se gana: la API es dueña del proceso de registro y aloja la saga; el worker es el "otro sistema". Un orquestador aparte solo tiene sentido cuando varias APIs alimentan el mismo proceso.
 
+**Transporte seleccionable por configuración, en un proyecto compartido.**
+Problema: la API y el worker tienen que coincidir exactamente en transporte, esquema, rol y scheduler; dos copias de esa configuración acaban divergiendo.
+Alternativa descartada: configurar MassTransit en cada `Program.cs`.
+Qué se gana: `Registration.Messaging.AddMessaging` es el único sitio donde se habla de transporte. Cambiar de SQL Server a RabbitMQ es un valor en `appsettings.json`, y el resto del código (saga, consumidores, handlers, tests) no se entera.
+
 **La saga termina; el resultado vive en el usuario.**
 Problema: los diagramas de negocio muestran dos finales (activa, caducada).
 Alternativa descartada: estados terminales permanentes en la saga.
@@ -372,7 +416,7 @@ Qué se gana: cero configuración. Se paga con la nota de "borra la base si camb
 
 | Paquete | Versión | Nota |
 |---|---|---|
-| MassTransit, .EntityFrameworkCore, .SqlTransport.SqlServer, .Abstractions | 8.5.12 | La 9 pasó a licencia comercial; la 8.x sigue siendo Apache 2.0 |
+| MassTransit, .EntityFrameworkCore, .SqlTransport.SqlServer, .RabbitMQ, .Abstractions | 8.5.12 | La 9 pasó a licencia comercial; la 8.x sigue siendo Apache 2.0 |
 | MediatR | 12.5.0 | La 13 pasó a licencia comercial |
 | FluentValidation (+ DependencyInjectionExtensions) | 12.2.0 | Apache 2.0 |
 | Ardalis.Result (+ AspNetCore, FluentValidation) | 10.1.0 | MIT |

@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Registration.Messages/Registration.Messages.csproj" />
+    <Project Path="src/Registration.Messaging/Registration.Messaging.csproj" />
     <Project Path="src/Registration.Domain/Registration.Domain.csproj" />
     <Project Path="src/Registration.Application/Registration.Application.csproj" />
     <Project Path="src/Registration.Infrastructure/Registration.Infrastructure.csproj" />

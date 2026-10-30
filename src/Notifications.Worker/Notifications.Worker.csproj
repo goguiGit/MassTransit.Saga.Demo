@@ -1,14 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
-    <PackageReference Include="MassTransit" />
-    <PackageReference Include="MassTransit.SqlTransport.SqlServer" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
-    <PackageReference Include="System.Security.Cryptography.Pkcs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Registration.Messages\Registration.Messages.csproj" />
+    <ProjectReference Include="..\Registration.Messaging\Registration.Messaging.csproj" />
   </ItemGroup>
 
 </Project>

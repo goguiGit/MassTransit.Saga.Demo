@@ -2,13 +2,12 @@
 
   <ItemGroup>
     <PackageReference Include="MassTransit.EntityFrameworkCore" />
-    <PackageReference Include="MassTransit.SqlTransport.SqlServer" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
-    <PackageReference Include="System.Security.Cryptography.Pkcs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Registration.Application\Registration.Application.csproj" />
+    <ProjectReference Include="..\Registration.Messaging\Registration.Messaging.csproj" />
   </ItemGroup>
 
 </Project>

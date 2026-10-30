@@ -5,6 +5,7 @@ using Registration.Application.Abstractions;
 using Registration.Application.Consumers;
 using Registration.Application.Saga;
 using Registration.Infrastructure.Persistence;
+using Registration.Messaging;
 
 namespace Registration.Infrastructure;
 
@@ -21,25 +22,8 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRegistrationReader, RegistrationReader>();
 
-        services.AddOptions<SqlTransportOptions>().Configure(options =>
+        services.AddMessaging(configuration, connectionString, x =>
         {
-            options.ConnectionString = connectionString;
-            options.Schema = "transport";
-            options.Role = "transport";
-        });
-        // CreateDatabase is off on purpose: that step always runs CREATE LOGIN with Username/Password, which has no
-        // integrated-security path. EnsureRegistrationDatabaseAsync creates the database first; the schema step
-        // resolves the current Windows login with ORIGINAL_LOGIN() and grants it the transport role.
-        services.AddSqlServerMigrationHostedService(options =>
-        {
-            options.CreateDatabase = false;
-            options.CreateSchema = true;
-            options.CreateInfrastructure = true;
-        });
-
-        services.AddMassTransit(x =>
-        {
-            x.AddSqlMessageScheduler();
             x.AddConsumer<UserActivatedConsumer>();
             x.AddConsumer<RegistrationDiscardedConsumer>();
             x.AddSagaStateMachine<RegistrationStateMachine, RegistrationState>()
@@ -48,11 +32,6 @@ public static class DependencyInjection
                     r.ExistingDbContext<RegistrationDbContext>();
                     r.UseSqlServer();
                 });
-            x.UsingSqlServer((context, cfg) =>
-            {
-                cfg.UseSqlMessageScheduler();
-                cfg.ConfigureEndpoints(context);
-            });
         });
 
         return services;
