@@ -257,12 +257,13 @@ Es el transporte que se usaría en producción en Azure. Requisitos:
 
 - Un namespace de nivel **Standard o Premium**. Basic no tiene *topics* y MassTransit no arranca.
 - Una cadena de conexión con permiso **Manage** (por ejemplo la política `RootManageSharedAccessKey`, o una propia con Manage), porque MassTransit crea la topología al arrancar. Con solo Send y Listen habría que crearla a mano.
-- La cadena es un **secreto** y no va en `appsettings.json` (ahí queda vacía a propósito). Va en user-secrets de cada servicio, o en la variable de entorno `Messaging__AzureServiceBus__ConnectionString`:
+- La cadena es un **secreto** y no va en `appsettings.json` (ahí queda vacía a propósito). Los dos servicios comparten el `UserSecretsId` `Saga.Secrets`, así que basta un fichero: `%APPDATA%\Microsoft\UserSecrets\Saga.Secrets\secrets.json`. Se rellena desde cualquiera de los dos proyectos, o editando el fichero a mano:
 
 ```bash
-cd src/Registration.Api        && dotnet user-secrets set "Messaging:AzureServiceBus:ConnectionString" "Endpoint=sb://<namespace>.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=<clave>"
-cd ../Notifications.Worker     && dotnet user-secrets set "Messaging:AzureServiceBus:ConnectionString" "Endpoint=sb://..."
+cd src/Registration.Api && dotnet user-secrets set "Messaging:AzureServiceBus:ConnectionString" "Endpoint=sb://<namespace>.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=<clave>"
 ```
+
+También vale la variable de entorno `Messaging__AzureServiceBus__ConnectionString`.
 
 Y arrancar con `Messaging__Transport=AzureServiceBus` los dos procesos. Si la cadena falta, el arranque falla con un mensaje que dice dónde ponerla.
 
