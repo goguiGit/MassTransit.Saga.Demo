@@ -9,6 +9,11 @@
     <PackageVersion Include="MassTransit.EntityFrameworkCore" Version="8.5.12" />
     <PackageVersion Include="MassTransit.SqlTransport.SqlServer" Version="8.5.12" />
     <PackageVersion Include="MediatR" Version="12.5.0" />
+    <PackageVersion Include="Ardalis.Result" Version="10.1.0" />
+    <PackageVersion Include="Ardalis.Result.AspNetCore" Version="10.1.0" />
+    <PackageVersion Include="Ardalis.Result.FluentValidation" Version="10.1.0" />
+    <PackageVersion Include="FluentValidation" Version="12.2.0" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.2.0" />
   </ItemGroup>
   <ItemGroup Label="Web and data">
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />

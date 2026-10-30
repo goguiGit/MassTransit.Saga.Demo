@@ -1,6 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
+  <PropertyGroup>
+    <UserSecretsId>6776b88e-9dd3-47c8-8aad-ce7a458eb4ea</UserSecretsId>
+  </PropertyGroup>
+
   <ItemGroup>
+    <PackageReference Include="Ardalis.Result.AspNetCore" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
   </ItemGroup>
 

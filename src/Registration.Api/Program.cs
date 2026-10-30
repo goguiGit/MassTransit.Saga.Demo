@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Registration.Api.Features.ConfirmEmail;
 using Registration.Api.Features.GetRegistration;
 using Registration.Api.Features.RegisterUser;
@@ -7,6 +8,7 @@ using Registration.Infrastructure;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
+builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddRegistrationApplication(builder.Configuration);
 builder.Services.AddRegistrationInfrastructure(builder.Configuration);
 

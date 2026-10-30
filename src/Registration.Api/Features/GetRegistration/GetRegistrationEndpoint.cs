@@ -8,11 +8,11 @@ public static class GetRegistrationEndpoint
     {
         app.MapGet("/registrations/{userId:guid}", async (Guid userId, IMediator mediator, CancellationToken cancellationToken) =>
         {
-            var status = await mediator.Send(new GetRegistrationQuery(userId), cancellationToken);
-            return status is null ? Results.NotFound() : Results.Ok(status);
+            var result = await mediator.Send(new GetRegistrationQuery(userId), cancellationToken);
+            return result.ToMinimalApiResult();
         })
         .WithName("GetRegistration")
-        .WithSummary("Returns the saga state of a registration, or 404 once it finished.");
+        .WithSummary("Returns the user and, while it runs, the saga state. 404 for unknown or discarded users.");
 
         return app;
     }

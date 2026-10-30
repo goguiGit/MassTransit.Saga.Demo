@@ -8,11 +8,11 @@ public static class RegisterUserEndpoint
     {
         app.MapPost("/registrations", async (RegisterUserCommand command, IMediator mediator, CancellationToken cancellationToken) =>
         {
-            var userId = await mediator.Send(command, cancellationToken);
-            return Results.Accepted($"/registrations/{userId}", new { userId });
+            var result = await mediator.Send(command, cancellationToken);
+            return result.ToMinimalApiResult();
         })
         .WithName("RegisterUser")
-        .WithSummary("Registers a user and starts the confirmation saga.");
+        .WithSummary("Registers a user and starts the confirmation saga. 201 with the user id, 400 if the email is invalid.");
 
         return app;
     }
