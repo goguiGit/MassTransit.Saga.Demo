@@ -1,4 +1,16 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="CLAUDE.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/scripts/">
+    <File Path=".claude/commands/registration-flow.md" />
+    <File Path="scripts/registration-flow.ps1" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Registration.Messages/Registration.Messages.csproj" />
     <Project Path="src/Registration.Messaging/Registration.Messaging.csproj" />
