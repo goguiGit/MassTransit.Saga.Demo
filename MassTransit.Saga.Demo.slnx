@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Registration.Messages/Registration.Messages.csproj" />
+    <Project Path="src/Registration.Domain/Registration.Domain.csproj" />
+    <Project Path="src/Registration.Application/Registration.Application.csproj" />
+    <Project Path="src/Registration.Infrastructure/Registration.Infrastructure.csproj" />
+    <Project Path="src/Registration.Api/Registration.Api.csproj" />
+    <Project Path="src/Notifications.Worker/Notifications.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Registration.Domain.Tests/Registration.Domain.Tests.csproj" />
+    <Project Path="tests/Registration.Application.Tests/Registration.Application.Tests.csproj" />
+  </Folder>
+</Solution>

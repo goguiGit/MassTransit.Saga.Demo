@@ -1,0 +1,28 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup Label="Messaging">
+    <!-- MassTransit 9 and MediatR 13 moved to commercial licenses; these are the last open-source lines. -->
+    <PackageVersion Include="MassTransit" Version="8.5.12" />
+    <PackageVersion Include="MassTransit.Abstractions" Version="8.5.12" />
+    <PackageVersion Include="MassTransit.EntityFrameworkCore" Version="8.5.12" />
+    <PackageVersion Include="MassTransit.SqlTransport.SqlServer" Version="8.5.12" />
+    <PackageVersion Include="MediatR" Version="12.5.0" />
+  </ItemGroup>
+  <ItemGroup Label="Web and data">
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.14" />
+    <!-- The SQL transport pulls Microsoft.Data.SqlClient, which pulls Pkcs 9.0.11 (GHSA-846f-f764-76mx); pin until it bumps. -->
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
+  </ItemGroup>
+  <ItemGroup Label="Tests">
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.0" />
+    <PackageVersion Include="NUnit" Version="4.3.2" />
+    <PackageVersion Include="NUnit.Analyzers" Version="4.7.0" />
+    <PackageVersion Include="NUnit3TestAdapter" Version="5.0.0" />
+  </ItemGroup>
+</Project>

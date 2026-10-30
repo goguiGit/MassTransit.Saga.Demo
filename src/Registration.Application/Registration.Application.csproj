@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="MassTransit" />
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Registration.Domain\Registration.Domain.csproj" />
+    <ProjectReference Include="..\Registration.Messages\Registration.Messages.csproj" />
+  </ItemGroup>
+
+</Project>

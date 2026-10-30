@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- Only the abstractions: the saga instance has to implement SagaStateMachineInstance. -->
+    <PackageReference Include="MassTransit.Abstractions" />
+  </ItemGroup>
+
+</Project>
