@@ -1,4 +1,5 @@
 using Registration.Application.Abstractions;
+using Registration.Application.Features.GetRegistration.Models;
 
 namespace Registration.Application.Features.GetRegistration;
 

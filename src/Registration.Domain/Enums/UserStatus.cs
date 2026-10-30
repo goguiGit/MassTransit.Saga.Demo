@@ -1,4 +1,4 @@
-namespace Registration.Domain;
+namespace Registration.Domain.Enums;
 
 public enum UserStatus
 {

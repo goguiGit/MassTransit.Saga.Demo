@@ -1,6 +1,6 @@
 using MassTransit;
 
-namespace Registration.Domain;
+namespace Registration.Domain.Models;
 
 public sealed class RegistrationState : SagaStateMachineInstance
 {

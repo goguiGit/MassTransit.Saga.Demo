@@ -1,8 +1,7 @@
+using Registration.Api.Features.ConfirmEmail.Models;
 using Registration.Application.Features.ConfirmEmail;
 
 namespace Registration.Api.Features.ConfirmEmail;
-
-public sealed record ConfirmEmailRequest(string Code);
 
 public static class ConfirmEmailEndpoint
 {

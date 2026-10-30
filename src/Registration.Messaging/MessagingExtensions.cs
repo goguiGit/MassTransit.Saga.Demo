@@ -1,6 +1,8 @@
 using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Registration.Messaging.Enums;
+using Registration.Messaging.Models;
 
 namespace Registration.Messaging;
 

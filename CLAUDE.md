@@ -6,6 +6,7 @@ Saga de registro de usuario con MassTransit 8, dos servicios sobre SQL Server co
 - `src/Registration.Messages` (contratos del bus), `Registration.Messaging` (configuración compartida del transporte: `AddMessaging`), `Registration.Domain`, `Registration.Application`, `Registration.Infrastructure`, `Registration.Api` (puerto 5100) y `Notifications.Worker` (puerto 5200). Tests en `tests/`, espejo por capa. Solución `MassTransit.Saga.Demo.slnx`, Central Package Management en `Directory.Packages.props`.
 - Capas más vertical slice: cada operación es una carpeta en `Registration.Application/Features/<Nombre>/` con comando o consulta, handler y validador, y una carpeta homónima en `Registration.Api/Features/<Nombre>/` con solo el endpoint.
 - Nombres: `XCommand` / `XCommandHandler` / `XCommandValidator`, `XQuery` / `XQueryHandler`, `XEndpoint`. Eventos en pasado (`UserRegistered`), comandos en imperativo (`SendWelcomeEmail`). Un tipo por fichero.
+- Carpetas: enumerados en `Enums/`, modelos (entidades, records de datos, opciones, DTOs de una feature) en `Models/`, namespace igual a la ruta. Los `global using` de cada proyecto ya incluyen `Registration.Domain.Enums` y `Registration.Domain.Models` donde hacen falta.
 
 ## Reglas de código
 - Handlers devuelven `Result` o `Result<T>` de Ardalis.Result; nunca excepciones para flujo de negocio. Los endpoints solo hacen `mediator.Send` y `result.ToMinimalApiResult()`.

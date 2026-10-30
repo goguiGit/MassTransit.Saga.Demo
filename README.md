@@ -56,7 +56,7 @@ flowchart LR
 |---|---|---|---|
 | `Registration.Messages` | Contratos entre servicios | Los siete `record` que viajan por el bus | nada |
 | `Registration.Messaging` | Infraestructura compartida | `AddMessaging`: elige el transporte (SQL Server o RabbitMQ) y su scheduler según `Messaging:Transport`, con el mismo esquema y rol para todos los servicios | MassTransit, MassTransit.SqlTransport.SqlServer, MassTransit.RabbitMQ |
-| `Registration.Domain` | Dominio | `User` (agregado), `UserStatus`, `RegistrationState` (instancia de la saga), `VerificationCode` | `MassTransit.Abstractions` (solo la interfaz `SagaStateMachineInstance`) |
+| `Registration.Domain` | Dominio | `Models/User` (agregado), `Enums/UserStatus`, `Models/RegistrationState` (instancia de la saga), `VerificationCode` | `MassTransit.Abstractions` (solo la interfaz `SagaStateMachineInstance`) |
 | `Registration.Application` | Aplicación | La máquina de estados, los consumidores que cambian usuarios, los *features* (comando o consulta + handler + validador), el `ValidationBehavior`, las abstracciones de persistencia | Domain, Messages, MassTransit, MediatR, FluentValidation, Ardalis.Result |
 | `Registration.Infrastructure` | Infraestructura | `RegistrationDbContext` (EF Core), repositorio de usuarios, lector de sagas, registro de la saga con repositorio EF y de los consumidores sobre `AddMessaging` | Application, Messaging, EF Core SQL Server, MassTransit.EntityFrameworkCore |
 | `Registration.Api` | Presentación | Un endpoint por *feature* que delega en MediatR y traduce el `Result` a HTTP | Application, Infrastructure |
@@ -71,7 +71,7 @@ Registration.Application/
   Features/
     RegisterUser/      RegisterUserCommand, RegisterUserCommandValidator, RegisterUserCommandHandler
     ConfirmEmail/      ConfirmEmailCommand, ConfirmEmailCommandValidator, ConfirmEmailCommandHandler
-    GetRegistration/   GetRegistrationQuery, GetRegistrationQueryHandler, RegistrationStatus
+    GetRegistration/   GetRegistrationQuery, GetRegistrationQueryHandler, Models/RegistrationStatus
   Saga/                RegistrationStateMachine, RegistrationOptions
   Consumers/           UserActivatedConsumer, RegistrationDiscardedConsumer
   Behaviors/           ValidationBehavior
@@ -79,11 +79,13 @@ Registration.Application/
 Registration.Api/
   Features/
     RegisterUser/      RegisterUserEndpoint
-    ConfirmEmail/      ConfirmEmailEndpoint
+    ConfirmEmail/      ConfirmEmailEndpoint, Models/ConfirmEmailRequest
     GetRegistration/   GetRegistrationEndpoint
 ```
 
 Convención de nombres: `XCommand` / `XCommandHandler` / `XCommandValidator` y `XQuery` / `XQueryHandler`. Cada carpeta de `Features` tiene todo lo que necesita leer quien toca esa operación; el endpoint vive en la API con el mismo nombre de carpeta porque es lo único que sabe de HTTP.
+
+Convención de carpetas: los enumerados van en `Enums/` y los modelos (entidades, records de datos, opciones) en `Models/`, con el namespace igual a la ruta. Así en `Registration.Domain` (`Enums/UserStatus`, `Models/User`, `Models/RegistrationState`), en `Registration.Messaging` (`Enums/MessagingTransport`, `Models/MessagingOptions`, `Models/RabbitMqOptions`), en el worker (`Models/SentEmail`) y dentro de cada feature que devuelve o recibe un DTO (`GetRegistration/Models/RegistrationStatus`, `ConfirmEmail/Models/ConfirmEmailRequest`).
 
 ## La saga paso a paso
 
