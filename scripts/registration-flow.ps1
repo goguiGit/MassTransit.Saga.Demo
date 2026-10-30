@@ -73,11 +73,10 @@ function Test-Service([string] $Name, [string] $Url, [string] $Project) {
     }
 }
 
-$apiUp = Test-Service 'Registration.Api' "$Api/openapi/v1.json" 'src/Registration.Api'
+if (-not (Test-Service 'Registration.Api' "$Api/openapi/v1.json" 'src/Registration.Api')) { exit 1 }
 $workerUp = Test-Service 'Notifications.Worker' "$Worker/emails" 'src/Notifications.Worker'
-if (-not ($apiUp -and $workerUp)) {
-    Write-Host 'The flow needs both: the worker is what records the verification code the script reads.' -ForegroundColor Yellow
-    exit 1
+if (-not $workerUp) {
+    Write-Host 'Worker is down: SendVerificationEmail will wait in its queue (see it in the RabbitMQ console) and the confirmation steps are skipped.' -ForegroundColor Yellow
 }
 
 Step "Register $Email"
@@ -92,11 +91,14 @@ $status = Invoke-Api GET "$Api/registrations/$userId"
 Expect 'userStatus' $status.Body.userStatus 'PendingConfirmation'
 Expect 'sagaState' $status.Body.sagaState 'AwaitingConfirmation'
 
-Step 'Verification email recorded by the worker'
-$mail = (Invoke-RestMethod "$Worker/emails") | Where-Object { $_.to -eq $Email -and $_.subject -eq 'Confirma tu email' } | Select-Object -Last 1
-$code = if ($mail) { ($mail.body -replace '\D', '') } else { $null }
-Expect 'code found' ($null -ne $code -and $code.Length -eq 6) $true
-Write-Host "   code = $code"
+$code = $null
+if ($workerUp) {
+    Step 'Verification email recorded by the worker'
+    $mail = (Invoke-RestMethod "$Worker/emails" -UseBasicParsing) | Where-Object { $_.to -eq $Email -and $_.subject -eq 'Confirma tu email' } | Select-Object -Last 1
+    $code = if ($mail) { ($mail.body -replace '\D', '') } else { $null }
+    Expect 'code found' ($null -ne $code -and $code.Length -eq 6) $true
+    Write-Host "   code = $code"
+}
 
 Step 'Invalid email is rejected before publishing'
 Expect 'status' (Invoke-Api POST "$Api/registrations" @{ email = 'not-an-email' }).Status 400
@@ -107,7 +109,11 @@ Expect 'status' (Invoke-Api POST "$Api/registrations/$userId/confirm" @{ code = 
 Step 'Unknown user'
 Expect 'status' (Invoke-Api POST "$Api/registrations/$([guid]::NewGuid())/confirm" @{ code = '123456' }).Status 404
 
-if ($Expire) {
+if (-not $code -and -not $Expire) {
+    Step 'Confirmation steps skipped: no verification code available'
+    Write-Host "   Start the worker and confirm by hand: POST $Api/registrations/$userId/confirm { ""code"": ""<code>"" }" -ForegroundColor Yellow
+}
+elseif ($Expire) {
     Step "Waiting $ConfirmationWindowSeconds s for the confirmation window to elapse"
     Start-Sleep -Seconds ($ConfirmationWindowSeconds + $SettleSeconds)
     $after = Invoke-Api GET "$Api/registrations/$userId"
