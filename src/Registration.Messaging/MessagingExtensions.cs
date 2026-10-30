@@ -52,6 +52,24 @@ public static class MessagingExtensions
                         cfg.ConfigureEndpoints(context);
                     });
                     break;
+                case MessagingTransport.AzureServiceBus:
+                    // Standard or Premium namespace (Basic has no topics) and a connection string with Manage rights:
+                    // MassTransit creates the topics, queues and forwarding subscriptions on startup.
+                    var connectionString = options.AzureServiceBus.ConnectionString;
+                    if (string.IsNullOrWhiteSpace(connectionString))
+                    {
+                        throw new InvalidOperationException(
+                            "Messaging:AzureServiceBus:ConnectionString is required. Set it with user-secrets or the Messaging__AzureServiceBus__ConnectionString variable.");
+                    }
+
+                    x.AddServiceBusMessageScheduler();
+                    x.UsingAzureServiceBus((context, cfg) =>
+                    {
+                        cfg.Host(connectionString);
+                        cfg.UseServiceBusMessageScheduler();
+                        cfg.ConfigureEndpoints(context);
+                    });
+                    break;
                 default:
                     throw new InvalidOperationException($"Unknown transport {options.Transport}.");
             }

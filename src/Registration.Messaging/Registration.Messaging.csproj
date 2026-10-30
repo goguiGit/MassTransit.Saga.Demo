@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <PackageReference Include="MassTransit" />
+    <PackageReference Include="MassTransit.Azure.ServiceBus.Core" />
     <PackageReference Include="MassTransit.RabbitMQ" />
     <PackageReference Include="MassTransit.SqlTransport.SqlServer" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />

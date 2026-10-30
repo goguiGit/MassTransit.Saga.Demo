@@ -8,4 +8,5 @@ public sealed class MessagingOptions
 
     public MessagingTransport Transport { get; set; } = MessagingTransport.Sql;
     public RabbitMqOptions RabbitMq { get; set; } = new();
+    public AzureServiceBusOptions AzureServiceBus { get; set; } = new();
 }

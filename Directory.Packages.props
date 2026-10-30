@@ -6,6 +6,7 @@
     <!-- MassTransit 9 and MediatR 13 moved to commercial licenses; these are the last open-source lines. -->
     <PackageVersion Include="MassTransit" Version="8.5.12" />
     <PackageVersion Include="MassTransit.Abstractions" Version="8.5.12" />
+    <PackageVersion Include="MassTransit.Azure.ServiceBus.Core" Version="8.5.12" />
     <PackageVersion Include="MassTransit.EntityFrameworkCore" Version="8.5.12" />
     <PackageVersion Include="MassTransit.RabbitMQ" Version="8.5.12" />
     <PackageVersion Include="MassTransit.SqlTransport.SqlServer" Version="8.5.12" />

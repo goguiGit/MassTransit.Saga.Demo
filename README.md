@@ -9,7 +9,7 @@ Es un ejemplo pequeño a propósito, pero completo: API con comandos y consultas
 - [La saga paso a paso](#la-saga-paso-a-paso)
 - [Mensajes](#mensajes)
 - [Persistencia](#persistencia)
-- [El transporte: SQL Server o RabbitMQ](#el-transporte-sql-server-o-rabbitmq)
+- [El transporte: SQL Server, RabbitMQ o Azure Service Bus](#el-transporte-sql-server-rabbitmq-o-azure-service-bus)
 - [La API: comandos, consultas, validación y resultados](#la-api-comandos-consultas-validación-y-resultados)
 - [El worker de notificaciones](#el-worker-de-notificaciones)
 - [Cómo ejecutarlo](#cómo-ejecutarlo)
@@ -169,14 +169,15 @@ El usuario existe desde el registro (por eso `POST /registrations` devuelve 201 
 
 Las tablas se crean con `EnsureCreated` al arrancar la API. Es una decisión de demo: **`EnsureCreated` no migra**. Si cambias el modelo, borra la base (`DROP DATABASE MassTransitSagaDemo`) y vuelve a arrancar. En un proyecto real irían migraciones de EF Core.
 
-## El transporte: SQL Server o RabbitMQ
+## El transporte: SQL Server, RabbitMQ o Azure Service Bus
 
 El transporte se elige en `appsettings.json` (o con la variable de entorno `Messaging__Transport`), y lo configura `Registration.Messaging/MessagingExtensions.cs`, compartido por la API y el worker para que los dos usen exactamente lo mismo:
 
 ```json
 "Messaging": {
   "Transport": "Sql",
-  "RabbitMq": { "Host": "localhost", "VirtualHost": "/", "Username": "guest", "Password": "guest" }
+  "RabbitMq": { "Host": "localhost", "VirtualHost": "/", "Username": "guest", "Password": "guest" },
+  "AzureServiceBus": { "ConnectionString": "" }
 }
 ```
 
@@ -250,6 +251,33 @@ podman exec rabbitmq rabbitmqctl list_queues name messages
 podman exec rabbitmq rabbitmqctl list_exchanges name type
 ```
 
+### Azure Service Bus (`Transport: AzureServiceBus`)
+
+Es el transporte que se usaría en producción en Azure. Requisitos:
+
+- Un namespace de nivel **Standard o Premium**. Basic no tiene *topics* y MassTransit no arranca.
+- Una cadena de conexión con permiso **Manage** (por ejemplo la política `RootManageSharedAccessKey`, o una propia con Manage), porque MassTransit crea la topología al arrancar. Con solo Send y Listen habría que crearla a mano.
+- La cadena es un **secreto** y no va en `appsettings.json` (ahí queda vacía a propósito). Va en user-secrets de cada servicio, o en la variable de entorno `Messaging__AzureServiceBus__ConnectionString`:
+
+```bash
+cd src/Registration.Api        && dotnet user-secrets set "Messaging:AzureServiceBus:ConnectionString" "Endpoint=sb://<namespace>.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=<clave>"
+cd ../Notifications.Worker     && dotnet user-secrets set "Messaging:AzureServiceBus:ConnectionString" "Endpoint=sb://..."
+```
+
+Y arrancar con `Messaging__Transport=AzureServiceBus` los dos procesos. Si la cadena falta, el arranque falla con un mensaje que dice dónde ponerla.
+
+**Qué crea MassTransit en el namespace** (no hay que configurar subscriptions a mano):
+
+| Entidad | Nombre | Para qué |
+|---|---|---|
+| Un *topic* por tipo de mensaje | `Registration.Messages/UserRegistered`, `.../EmailConfirmed`, `.../SendVerificationEmail`, ... | Donde cae cada `Publish` |
+| Una *queue* por consumidor o saga | `RegistrationState`, `EmailSender`, `UserActivated`, `RegistrationDiscarded` | Lo que cada servicio escucha |
+| Una *subscription* en cada topic con *auto-forward* a la queue del consumidor | `UserRegistered` → reenvía a `RegistrationState`; `SendWelcomeEmail` → a `EmailSender` | El equivalente a los *bindings* de RabbitMQ |
+
+Así, publicar `SendWelcomeEmail` deja el mensaje en su topic y la subscription lo reenvía a la cola `EmailSender`. Si otro servicio quiere el mismo evento, MassTransit le crea su subscription y su cola sin tocar al publicador. El plazo de la saga usa los **mensajes programados nativos** de Service Bus (`UseServiceBusMessageScheduler`), y `Unschedule` cancela el mensaje programado por su número de secuencia; no hace falta plugin ni tabla.
+
+En producción, mejor identidad administrada que cadena de conexión: `cfg.Host(new Uri("sb://<namespace>.servicebus.windows.net"), h => h.TokenCredential = new DefaultAzureCredential())` con el rol *Azure Service Bus Data Owner*. No está en la demo para no añadir dependencia de Azure.Identity.
+
 ## La API: comandos, consultas, validación y resultados
 
 Tres endpoints, cada uno en su carpeta de `Registration.Api/Features`, que solo hacen dos cosas: `mediator.Send(...)` y `result.ToMinimalApiResult()`.
@@ -286,7 +314,7 @@ Los handlers devuelven `Result` o `Result<T>` con un estado semántico (`Ok`, `C
 
 ## Cómo ejecutarlo
 
-Requisitos: .NET 10 SDK y una instancia local de SQL Server con autenticación integrada (`Server=localhost`). La cadena de conexión está en los dos `appsettings.json`; no hay credenciales en el repo. Si tu instancia es otra, cámbiala ahí o pásala por variable de entorno `ConnectionStrings__Registration`. RabbitMQ es opcional (ver [El transporte](#el-transporte-sql-server-o-rabbitmq)).
+Requisitos: .NET 10 SDK y una instancia local de SQL Server con autenticación integrada (`Server=localhost`). La cadena de conexión está en los dos `appsettings.json`; no hay credenciales en el repo. Si tu instancia es otra, cámbiala ahí o pásala por variable de entorno `ConnectionStrings__Registration`. RabbitMQ y Azure Service Bus son opcionales (ver [El transporte](#el-transporte-sql-server-rabbitmq-o-azure-service-bus)).
 
 ```bash
 dotnet build MassTransit.Saga.Demo.slnx
@@ -387,7 +415,7 @@ Qué se gana: la API es dueña del proceso de registro y aloja la saga; el worke
 **Transporte seleccionable por configuración, en un proyecto compartido.**
 Problema: la API y el worker tienen que coincidir exactamente en transporte, esquema, rol y scheduler; dos copias de esa configuración acaban divergiendo.
 Alternativa descartada: configurar MassTransit en cada `Program.cs`.
-Qué se gana: `Registration.Messaging.AddMessaging` es el único sitio donde se habla de transporte. Cambiar de SQL Server a RabbitMQ es un valor en `appsettings.json`, y el resto del código (saga, consumidores, handlers, tests) no se entera.
+Qué se gana: `Registration.Messaging.AddMessaging` es el único sitio donde se habla de transporte. Cambiar entre SQL Server, RabbitMQ y Azure Service Bus es un valor en `appsettings.json`, y el resto del código (saga, consumidores, handlers, tests) no se entera.
 
 **La saga termina; el resultado vive en el usuario.**
 Problema: los diagramas de negocio muestran dos finales (activa, caducada).
@@ -418,7 +446,7 @@ Qué se gana: cero configuración. Se paga con la nota de "borra la base si camb
 
 | Paquete | Versión | Nota |
 |---|---|---|
-| MassTransit, .EntityFrameworkCore, .SqlTransport.SqlServer, .RabbitMQ, .Abstractions | 8.5.12 | La 9 pasó a licencia comercial; la 8.x sigue siendo Apache 2.0 |
+| MassTransit, .EntityFrameworkCore, .SqlTransport.SqlServer, .RabbitMQ, .Azure.ServiceBus.Core, .Abstractions | 8.5.12 | La 9 pasó a licencia comercial; la 8.x sigue siendo Apache 2.0 |
 | MediatR | 12.5.0 | La 13 pasó a licencia comercial |
 | FluentValidation (+ DependencyInjectionExtensions) | 12.2.0 | Apache 2.0 |
 | Ardalis.Result (+ AspNetCore, FluentValidation) | 10.1.0 | MIT |
