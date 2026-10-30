@@ -65,12 +65,18 @@ function Expect([string] $What, $Actual, $Expected) {
     }
 }
 
-try {
-    Invoke-RestMethod "$Api/openapi/v1.json" | Out-Null
-    Invoke-RestMethod "$Worker/emails" | Out-Null
+function Test-Service([string] $Name, [string] $Url, [string] $Project) {
+    try { Invoke-RestMethod $Url -UseBasicParsing | Out-Null; $true }
+    catch {
+        Write-Host "$Name not reachable at $Url. Start it with: dotnet run --project $Project" -ForegroundColor Red
+        $false
+    }
 }
-catch {
-    Write-Host "API ($Api) or worker ($Worker) not reachable. Start both first (API before worker with the SQL transport)." -ForegroundColor Red
+
+$apiUp = Test-Service 'Registration.Api' "$Api/openapi/v1.json" 'src/Registration.Api'
+$workerUp = Test-Service 'Notifications.Worker' "$Worker/emails" 'src/Notifications.Worker'
+if (-not ($apiUp -and $workerUp)) {
+    Write-Host 'The flow needs both: the worker is what records the verification code the script reads.' -ForegroundColor Yellow
     exit 1
 }
 
